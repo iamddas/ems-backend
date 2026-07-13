@@ -1,4 +1,7 @@
 spring:
+  config:
+    import: optional:file:.env[.properties]
+
   application:
     name: ems-backend
 
@@ -24,6 +27,10 @@ server:
 jwt:
   secret: ${JWT_SECRET:3d7a9f2b1c8e4f6a0b5d3e7c9a2f4b8d1e6c3a9f2b5d8e1c4a7f0b3d6e9c2a5}
   expiration: ${JWT_EXPIRATION:86400000}
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
 
 logging:
   level:
