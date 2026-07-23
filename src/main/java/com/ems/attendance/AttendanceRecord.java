@@ -2,6 +2,7 @@ package com.ems.attendance;
 
 import com.ems.employee.Employee;
 import com.ems.model.BaseEntity;
+import com.ems.model.UserInfo;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
@@ -39,4 +40,8 @@ public class AttendanceRecord extends BaseEntity {
     private AttendanceStatus status = AttendanceStatus.PRESENT;
 
     private String notes;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private UserInfo user;
 }

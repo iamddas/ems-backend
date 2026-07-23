@@ -5,7 +5,11 @@ import com.ems.attendance.dto.AttendanceResponse;
 import com.ems.common.exception.ResourceNotFoundException;
 import com.ems.employee.Employee;
 import com.ems.employee.EmployeeRepository;
+import com.ems.model.Role;
+import com.ems.model.UserInfo;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +32,9 @@ public class AttendanceServiceImpl implements AttendanceService {
                     + " on " + request.getDate());
         }
         Employee employee = findEmployeeOrThrow(request.getEmployeeId());
+        UserInfo currentUser = getCurrentUser();
+        enforceSelfOrAdmin(employee, currentUser);
+
         AttendanceRecord record = AttendanceRecord.builder()
                 .employee(employee)
                 .date(request.getDate())
@@ -35,14 +42,33 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .checkOut(request.getCheckOut())
                 .status(request.getStatus() != null ? request.getStatus() : AttendanceStatus.PRESENT)
                 .notes(request.getNotes())
+                .user(currentUser)
                 .build();
         return toResponse(attendanceRepository.save(record));
+    }
+
+    private static UserInfo getCurrentUser() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return principal instanceof UserInfo userInfo ? userInfo : null;
+    }
+
+    /** EMPLOYEE-role users may only record/edit their own attendance; ADMIN/SUPER_ADMIN can act on anyone. */
+    private static void enforceSelfOrAdmin(Employee employee, UserInfo currentUser) {
+        if (currentUser == null || currentUser.getRole() != Role.EMPLOYEE) {
+            return;
+        }
+        boolean isSelf = employee.getUser() != null && employee.getUser().getId().equals(currentUser.getId());
+        if (!isSelf) {
+            throw new AccessDeniedException("You can only record your own attendance");
+        }
     }
 
     @Override
     @Transactional(readOnly = true)
     public AttendanceResponse getById(Long id) {
-        return toResponse(findOrThrow(id));
+        AttendanceRecord record = findOrThrow(id);
+        enforceSelfOrAdmin(record.getEmployee(), getCurrentUser());
+        return toResponse(record);
     }
 
     @Override
@@ -54,12 +80,14 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     @Transactional(readOnly = true)
     public List<AttendanceResponse> getByEmployee(Long employeeId) {
+        enforceSelfOrAdmin(findEmployeeOrThrow(employeeId), getCurrentUser());
         return attendanceRepository.findByEmployeeId(employeeId).stream().map(this::toResponse).toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<AttendanceResponse> getByEmployeeAndDateRange(Long employeeId, LocalDate from, LocalDate to) {
+        enforceSelfOrAdmin(findEmployeeOrThrow(employeeId), getCurrentUser());
         return attendanceRepository.findByEmployeeIdAndDateBetween(employeeId, from, to)
                 .stream().map(this::toResponse).toList();
     }
@@ -68,6 +96,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Transactional
     public AttendanceResponse update(Long id, AttendanceRequest request) {
         AttendanceRecord record = findOrThrow(id);
+        enforceSelfOrAdmin(record.getEmployee(), getCurrentUser());
         record.setCheckIn(request.getCheckIn());
         record.setCheckOut(request.getCheckOut());
         if (request.getStatus() != null) {
@@ -107,6 +136,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .checkOut(record.getCheckOut())
                 .status(record.getStatus())
                 .notes(record.getNotes())
+                .userId(record.getUser() != null ? record.getUser().getId() : null)
                 .createdAt(record.getCreatedAt())
                 .updatedAt(record.getUpdatedAt())
                 .build();

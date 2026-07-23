@@ -3,18 +3,29 @@ package com.ems.employee;
 import com.ems.common.exception.ResourceNotFoundException;
 import com.ems.employee.dto.EmployeeRequest;
 import com.ems.employee.dto.EmployeeResponse;
+import com.ems.model.Role;
+import com.ems.model.UserInfo;
+import com.ems.repository.UserInfoRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 public class EmployeeServiceImpl implements EmployeeService {
 
+    private static final String TEMP_PASSWORD_CHARS =
+            "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    private static final SecureRandom RANDOM = new SecureRandom();
+
     private final EmployeeRepository employeeRepository;
     private final DepartmentRepository departmentRepository;
+    private final UserInfoRepository userInfoRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     @Transactional
@@ -25,9 +36,38 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (employeeRepository.existsByEmployeeCode(request.getEmployeeCode())) {
             throw new IllegalArgumentException("Employee code already in use: " + request.getEmployeeCode());
         }
+
         Employee employee = new Employee();
         applyRequest(employee, request);
-        return toResponse(employeeRepository.save(employee));
+
+        String temporaryPassword = null;
+        UserInfo existingUser = userInfoRepository.findByEmail(request.getEmail()).orElse(null);
+        if (existingUser != null) {
+            employee.setUser(existingUser);
+        } else {
+            temporaryPassword = generateTempPassword();
+            UserInfo newUser = UserInfo.builder()
+                    .firstName(request.getFirstName())
+                    .lastName(request.getLastName())
+                    .email(request.getEmail())
+                    .password(passwordEncoder.encode(temporaryPassword))
+                    .role(request.getRole() != null ? request.getRole() : Role.EMPLOYEE)
+                    .active(true)
+                    .build();
+            employee.setUser(userInfoRepository.save(newUser));
+        }
+
+        EmployeeResponse response = toResponse(employeeRepository.save(employee));
+        response.setTemporaryPassword(temporaryPassword);
+        return response;
+    }
+
+    private static String generateTempPassword() {
+        StringBuilder sb = new StringBuilder(12);
+        for (int i = 0; i < 12; i++) {
+            sb.append(TEMP_PASSWORD_CHARS.charAt(RANDOM.nextInt(TEMP_PASSWORD_CHARS.length())));
+        }
+        return sb.toString();
     }
 
     @Override
@@ -103,6 +143,8 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .status(emp.getStatus())
                 .departmentId(emp.getDepartment() != null ? emp.getDepartment().getId() : null)
                 .departmentName(emp.getDepartment() != null ? emp.getDepartment().getName() : null)
+                .userId(emp.getUser() != null ? emp.getUser().getId() : null)
+                .role(emp.getUser() != null ? emp.getUser().getRole() : null)
                 .createdAt(emp.getCreatedAt())
                 .updatedAt(emp.getUpdatedAt())
                 .build();

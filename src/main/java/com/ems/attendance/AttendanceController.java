@@ -21,7 +21,6 @@ public class AttendanceController {
     private final AttendanceService attendanceService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<AttendanceResponse> create(@Valid @RequestBody AttendanceRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(attendanceService.create(request));
     }
@@ -51,7 +50,6 @@ public class AttendanceController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<AttendanceResponse> update(
             @PathVariable Long id,
             @Valid @RequestBody AttendanceRequest request) {

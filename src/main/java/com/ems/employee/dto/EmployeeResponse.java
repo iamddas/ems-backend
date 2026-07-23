@@ -1,6 +1,7 @@
 package com.ems.employee.dto;
 
 import com.ems.employee.EmployeeStatus;
+import com.ems.model.Role;
 import lombok.Builder;
 import lombok.Data;
 
@@ -23,6 +24,9 @@ public class EmployeeResponse {
     private EmployeeStatus status;
     private Long departmentId;
     private String departmentName;
+    private Long userId;
+    private Role role;
+    private String temporaryPassword;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -1,6 +1,7 @@
 package com.ems.employee.dto;
 
 import com.ems.employee.EmployeeStatus;
+import com.ems.model.Role;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
@@ -36,4 +37,6 @@ public class EmployeeRequest {
     private EmployeeStatus status;
 
     private Long departmentId;
+
+    private Role role;
 }

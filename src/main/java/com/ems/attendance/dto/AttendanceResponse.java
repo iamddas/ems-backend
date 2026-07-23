@@ -20,6 +20,7 @@ public class AttendanceResponse {
     private LocalTime checkOut;
     private AttendanceStatus status;
     private String notes;
+    private Long userId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
