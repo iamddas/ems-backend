@@ -7,6 +7,9 @@ import com.ems.employee.Employee;
 import com.ems.employee.EmployeeRepository;
 import com.ems.model.Role;
 import com.ems.model.UserInfo;
+import com.ems.notification.NotificationService;
+import com.ems.notification.NotificationType;
+import com.ems.notification.dto.NotificationRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -22,6 +25,7 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     private final AttendanceRepository attendanceRepository;
     private final EmployeeRepository employeeRepository;
+    private final NotificationService notificationService;
 
     @Override
     @Transactional
@@ -44,7 +48,26 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .notes(request.getNotes())
                 .user(currentUser)
                 .build();
-        return toResponse(attendanceRepository.save(record));
+        AttendanceRecord saved = attendanceRepository.save(record);
+
+        if (saved.getCheckIn() != null) {
+            notifySelf(employee.getUser(), "Punched In", NotificationType.SUCCESS,
+                    "You checked in at " + saved.getCheckIn() + " on " + saved.getDate());
+        }
+
+        return toResponse(saved);
+    }
+
+    private void notifySelf(UserInfo recipient, String title, NotificationType type, String message) {
+        if (recipient == null) {
+            return;
+        }
+        NotificationRequest notification = new NotificationRequest();
+        notification.setTitle(title);
+        notification.setMessage(message);
+        notification.setType(type);
+        notification.setRecipientId(recipient.getId());
+        notificationService.create(notification);
     }
 
     private static UserInfo getCurrentUser() {
@@ -97,13 +120,21 @@ public class AttendanceServiceImpl implements AttendanceService {
     public AttendanceResponse update(Long id, AttendanceRequest request) {
         AttendanceRecord record = findOrThrow(id);
         enforceSelfOrAdmin(record.getEmployee(), getCurrentUser());
+        boolean justCheckedOut = record.getCheckOut() == null && request.getCheckOut() != null;
         record.setCheckIn(request.getCheckIn());
         record.setCheckOut(request.getCheckOut());
         if (request.getStatus() != null) {
             record.setStatus(request.getStatus());
         }
         record.setNotes(request.getNotes());
-        return toResponse(attendanceRepository.save(record));
+        AttendanceRecord saved = attendanceRepository.save(record);
+
+        if (justCheckedOut) {
+            notifySelf(saved.getEmployee().getUser(), "Punched Out", NotificationType.SUCCESS,
+                    "You checked out at " + saved.getCheckOut() + " on " + saved.getDate());
+        }
+
+        return toResponse(saved);
     }
 
     @Override

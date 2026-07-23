@@ -6,6 +6,7 @@ import com.ems.notification.dto.NotificationRequest;
 import com.ems.notification.dto.NotificationResponse;
 import com.ems.repository.UserInfoRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserInfoRepository userInfoRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Override
     @Transactional
@@ -29,7 +31,9 @@ public class NotificationServiceImpl implements NotificationService {
                 .type(request.getType() != null ? request.getType() : NotificationType.INFO)
                 .recipient(recipient)
                 .build();
-        return toResponse(notificationRepository.save(notification));
+        NotificationResponse response = toResponse(notificationRepository.save(notification));
+        messagingTemplate.convertAndSendToUser(recipient.getEmail(), "/queue/notifications", response);
+        return response;
     }
 
     @Override
