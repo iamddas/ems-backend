@@ -4,6 +4,8 @@ import com.ems.model.UserInfo;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.user.SimpUser;
+import org.springframework.messaging.simp.user.SimpUserRegistry;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,6 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/v1/chat")
@@ -21,6 +25,12 @@ public class ChatHistoryController {
     private static final List<ChatMessageType> PUBLIC_TYPES = List.of(ChatMessageType.BROADCAST, ChatMessageType.EMERGENCY);
 
     private final ChatMessageRepository chatMessageRepository;
+    private final SimpUserRegistry simpUserRegistry;
+
+    @GetMapping("/online")
+    public ResponseEntity<Set<String>> getOnlineUsers() {
+        return ResponseEntity.ok(simpUserRegistry.getUsers().stream().map(SimpUser::getName).collect(Collectors.toSet()));
+    }
 
     @GetMapping("/messages")
     public ResponseEntity<List<ChatMessage>> getRecentMessages() {

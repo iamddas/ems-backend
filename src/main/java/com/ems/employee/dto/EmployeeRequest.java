@@ -39,4 +39,7 @@ public class EmployeeRequest {
     private Long departmentId;
 
     private Role role;
+
+    /** Super Admin only — set to change the linked account's password. Ignored if blank. */
+    private String newPassword;
 }

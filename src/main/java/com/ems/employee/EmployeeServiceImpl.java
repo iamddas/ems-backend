@@ -7,6 +7,8 @@ import com.ems.model.Role;
 import com.ems.model.UserInfo;
 import com.ems.repository.UserInfoRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -93,7 +95,35 @@ public class EmployeeServiceImpl implements EmployeeService {
     public EmployeeResponse update(Long id, EmployeeRequest request) {
         Employee employee = findOrThrow(id);
         applyRequest(employee, request);
+
+        boolean wantsRoleChange = request.getRole() != null;
+        boolean wantsPasswordChange = request.getNewPassword() != null && !request.getNewPassword().isBlank();
+        if (wantsRoleChange || wantsPasswordChange) {
+            if (!isSuperAdmin(getCurrentUser())) {
+                throw new AccessDeniedException("Only Super Admin can change an employee's role or password");
+            }
+            UserInfo linkedUser = employee.getUser();
+            if (linkedUser != null) {
+                if (wantsRoleChange) {
+                    linkedUser.setRole(request.getRole());
+                }
+                if (wantsPasswordChange) {
+                    linkedUser.setPassword(passwordEncoder.encode(request.getNewPassword()));
+                }
+                userInfoRepository.save(linkedUser);
+            }
+        }
+
         return toResponse(employeeRepository.save(employee));
+    }
+
+    private static UserInfo getCurrentUser() {
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        return principal instanceof UserInfo userInfo ? userInfo : null;
+    }
+
+    private static boolean isSuperAdmin(UserInfo user) {
+        return user != null && user.getRole() == Role.SUPER_ADMIN;
     }
 
     @Override

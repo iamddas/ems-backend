@@ -45,6 +45,11 @@ public class UserInfo extends BaseEntity implements UserDetails {
     @Column(nullable = false)
     private Boolean active = true;
 
+    private String phone;
+
+    @Column(columnDefinition = "TEXT")
+    private String profilePictureUrl;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
