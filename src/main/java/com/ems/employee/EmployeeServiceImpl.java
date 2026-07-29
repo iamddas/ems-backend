@@ -7,6 +7,8 @@ import com.ems.model.Role;
 import com.ems.model.UserInfo;
 import com.ems.repository.UserInfoRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -59,6 +61,8 @@ public class EmployeeServiceImpl implements EmployeeService {
             employee.setUser(userInfoRepository.save(newUser));
         }
 
+        syncLoginAccessWithStatus(employee);
+
         EmployeeResponse response = toResponse(employeeRepository.save(employee));
         response.setTemporaryPassword(temporaryPassword);
         return response;
@@ -86,8 +90,20 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<EmployeeResponse> getAll(Pageable pageable) {
+        return employeeRepository.findAll(pageable).map(this::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<EmployeeResponse> getByDepartment(Long departmentId) {
         return employeeRepository.findByDepartmentId(departmentId).stream().map(this::toResponse).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<EmployeeResponse> getByDepartment(Long departmentId, Pageable pageable) {
+        return employeeRepository.findByDepartmentId(departmentId, pageable).map(this::toResponse);
     }
 
     @Override
@@ -114,7 +130,24 @@ public class EmployeeServiceImpl implements EmployeeService {
             }
         }
 
+        syncLoginAccessWithStatus(employee);
+
         return toResponse(employeeRepository.save(employee));
+    }
+
+    // An INACTIVE employee's linked login account is disabled — Spring Security's
+    // DaoAuthenticationProvider checks UserInfo.isEnabled() and rejects login with
+    // DisabledException before password verification even runs.
+    private void syncLoginAccessWithStatus(Employee employee) {
+        UserInfo linkedUser = employee.getUser();
+        if (linkedUser == null) {
+            return;
+        }
+        boolean shouldBeActive = employee.getStatus() != EmployeeStatus.INACTIVE;
+        if (shouldBeActive != Boolean.TRUE.equals(linkedUser.getActive())) {
+            linkedUser.setActive(shouldBeActive);
+            userInfoRepository.save(linkedUser);
+        }
     }
 
     private static UserInfo getCurrentUser() {
@@ -124,6 +157,10 @@ public class EmployeeServiceImpl implements EmployeeService {
 
     private static boolean isSuperAdmin(UserInfo user) {
         return user != null && user.getRole() == Role.SUPER_ADMIN;
+    }
+
+    private static boolean isAdminOrSuperAdmin(UserInfo user) {
+        return user != null && (user.getRole() == Role.ADMIN || user.getRole() == Role.SUPER_ADMIN);
     }
 
     @Override
@@ -160,6 +197,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     private EmployeeResponse toResponse(Employee emp) {
+        boolean canSeeSalary = isAdminOrSuperAdmin(getCurrentUser());
         return EmployeeResponse.builder()
                 .id(emp.getId())
                 .employeeCode(emp.getEmployeeCode())
@@ -168,7 +206,7 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .email(emp.getEmail())
                 .phone(emp.getPhone())
                 .position(emp.getPosition())
-                .salary(emp.getSalary())
+                .salary(canSeeSalary ? emp.getSalary() : null)
                 .hireDate(emp.getHireDate())
                 .status(emp.getStatus())
                 .departmentId(emp.getDepartment() != null ? emp.getDepartment().getId() : null)

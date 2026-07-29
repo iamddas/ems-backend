@@ -11,9 +11,13 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Entity
-@Table(name = "attendance_records", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"employee_id", "date"})
-})
+@Table(name = "attendance_records",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"employee_id", "date"})
+        },
+        indexes = {
+                @Index(name = "idx_attendance_records_date", columnList = "date")
+        })
 @Getter
 @Setter
 @NoArgsConstructor

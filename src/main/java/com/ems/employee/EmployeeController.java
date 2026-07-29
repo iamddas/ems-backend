@@ -4,6 +4,8 @@ import com.ems.employee.dto.EmployeeRequest;
 import com.ems.employee.dto.EmployeeResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,14 +31,29 @@ public class EmployeeController {
         return ResponseEntity.ok(employeeService.getById(id));
     }
 
+    // Dual-mode: no page/size -> full list (chat contacts, punch self-lookup, dashboard rely on this).
+    // page and/or size present -> paginated response, used by the Employees directory table.
     @GetMapping
-    public ResponseEntity<List<EmployeeResponse>> getAll() {
-        return ResponseEntity.ok(employeeService.getAll());
+    public ResponseEntity<?> getAll(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        if (page == null && size == null) {
+            return ResponseEntity.ok(employeeService.getAll());
+        }
+        Pageable pageable = PageRequest.of(page != null ? page : 0, size != null ? size : 20);
+        return ResponseEntity.ok(employeeService.getAll(pageable));
     }
 
     @GetMapping("/department/{departmentId}")
-    public ResponseEntity<List<EmployeeResponse>> getByDepartment(@PathVariable Long departmentId) {
-        return ResponseEntity.ok(employeeService.getByDepartment(departmentId));
+    public ResponseEntity<?> getByDepartment(
+            @PathVariable Long departmentId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        if (page == null && size == null) {
+            return ResponseEntity.ok(employeeService.getByDepartment(departmentId));
+        }
+        Pageable pageable = PageRequest.of(page != null ? page : 0, size != null ? size : 20);
+        return ResponseEntity.ok(employeeService.getByDepartment(departmentId, pageable));
     }
 
     @PutMapping("/{id}")

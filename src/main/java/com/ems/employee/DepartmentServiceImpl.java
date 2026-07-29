@@ -4,6 +4,8 @@ import com.ems.common.exception.ResourceNotFoundException;
 import com.ems.employee.dto.DepartmentRequest;
 import com.ems.employee.dto.DepartmentResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +44,12 @@ public class DepartmentServiceImpl implements DepartmentService {
     @Transactional(readOnly = true)
     public List<DepartmentResponse> getAll() {
         return departmentRepository.findAll().stream().map(this::toResponse).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<DepartmentResponse> getAll(Pageable pageable) {
+        return departmentRepository.findAll(pageable).map(this::toResponse);
     }
 
     @Override

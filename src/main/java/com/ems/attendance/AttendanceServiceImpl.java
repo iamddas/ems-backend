@@ -11,6 +11,8 @@ import com.ems.notification.NotificationService;
 import com.ems.notification.NotificationType;
 import com.ems.notification.dto.NotificationRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -102,9 +104,22 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<AttendanceResponse> getAll(Pageable pageable) {
+        return attendanceRepository.findAll(pageable).map(this::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<AttendanceResponse> getByEmployee(Long employeeId) {
         enforceSelfOrAdmin(findEmployeeOrThrow(employeeId), getCurrentUser());
         return attendanceRepository.findByEmployeeId(employeeId).stream().map(this::toResponse).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AttendanceResponse> getByEmployee(Long employeeId, Pageable pageable) {
+        enforceSelfOrAdmin(findEmployeeOrThrow(employeeId), getCurrentUser());
+        return attendanceRepository.findByEmployeeId(employeeId, pageable).map(this::toResponse);
     }
 
     @Override
@@ -113,6 +128,13 @@ public class AttendanceServiceImpl implements AttendanceService {
         enforceSelfOrAdmin(findEmployeeOrThrow(employeeId), getCurrentUser());
         return attendanceRepository.findByEmployeeIdAndDateBetween(employeeId, from, to)
                 .stream().map(this::toResponse).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AttendanceResponse> getByEmployeeAndDateRange(Long employeeId, LocalDate from, LocalDate to, Pageable pageable) {
+        enforceSelfOrAdmin(findEmployeeOrThrow(employeeId), getCurrentUser());
+        return attendanceRepository.findByEmployeeIdAndDateBetween(employeeId, from, to, pageable).map(this::toResponse);
     }
 
     @Override

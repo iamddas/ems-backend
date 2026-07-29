@@ -8,7 +8,9 @@ import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 @Entity
-@Table(name = "notifications")
+@Table(name = "notifications", indexes = {
+        @Index(name = "idx_notifications_recipient_id", columnList = "recipient_id")
+})
 @Getter
 @Setter
 @NoArgsConstructor

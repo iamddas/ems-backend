@@ -4,6 +4,8 @@ import com.ems.employee.dto.DepartmentRequest;
 import com.ems.employee.dto.DepartmentResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,9 +31,17 @@ public class DepartmentController {
         return ResponseEntity.ok(departmentService.getById(id));
     }
 
+    // Dual-mode: no page/size -> full list (dropdowns, chat, etc. rely on this).
+    // page and/or size present -> paginated response, used by the Departments table.
     @GetMapping
-    public ResponseEntity<List<DepartmentResponse>> getAll() {
-        return ResponseEntity.ok(departmentService.getAll());
+    public ResponseEntity<?> getAll(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size) {
+        if (page == null && size == null) {
+            return ResponseEntity.ok(departmentService.getAll());
+        }
+        Pageable pageable = PageRequest.of(page != null ? page : 0, size != null ? size : 20);
+        return ResponseEntity.ok(departmentService.getAll(pageable));
     }
 
     @PutMapping("/{id}")
