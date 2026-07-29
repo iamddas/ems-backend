@@ -28,7 +28,7 @@ spring:
     schemas: public
 
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${PORT:${SERVER_PORT:8080}}
 
 jwt:
   secret: ${JWT_SECRET}
@@ -40,6 +40,6 @@ app:
 
 logging:
   level:
-    com.ems: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
+    com.ems: ${LOG_LEVEL:INFO}
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
