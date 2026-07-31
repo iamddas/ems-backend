@@ -36,6 +36,7 @@ public class ChatController {
             return;
         }
         if (message.getType() == ChatMessageType.DIRECT && message.getTo() == null) {
+            log.warn("Rejected DIRECT chat message with no recipient from: {}", message.getFrom());
             return;
         }
 
